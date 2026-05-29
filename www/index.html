@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kimi K2.6 UDE</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash" class="splash">
+    <div class="splash-content">
+      <div class="splash-icon">
+        <svg viewBox="0 0 64 64" width="80" height="80">
+          <rect width="64" height="64" rx="14" fill="#0F1117"/>
+          <text x="32" y="42" text-anchor="middle" fill="#10B981" font-size="28" font-family="monospace" font-weight="bold">&lt;/&gt;</text>
+        </svg>
+      </div>
+      <h1 class="splash-title">Kimi K2.6 UDE</h1>
+      <p class="splash-subtitle">Unified Developer Environment</p>
+      <div class="splash-loader">
+        <div class="splash-loader-bar"></div>
+      </div>
+      <p class="splash-status" id="splashStatus">Initializing...</p>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app hidden">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="topbar-btn" id="menuBtn" title="Menu">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="topbar-brand">
+          <span class="brand-symbol">&lt;/&gt;</span>
+          <span class="brand-name">Kimi K2.6 UDE</span>
+        </div>
+      </div>
+      <div class="topbar-center">
+        <div class="topbar-tabs" id="tabBar">
+          <div class="tab active" data-tab="editor">
+            <i class="fas fa-code"></i> Editor
+          </div>
+          <div class="tab" data-tab="ai">
+            <i class="fas fa-brain"></i> Kimi AI
+          </div>
+          <div class="tab" data-tab="terminal">
+            <i class="fas fa-terminal"></i> Terminal
+          </div>
+          <div class="tab" data-tab="files">
+            <i class="fas fa-folder-open"></i> Files
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" id="settingsBtn" title="Settings">
+          <i class="fas fa-cog"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="content">
+      <!-- Editor Panel -->
+      <div class="panel active" id="editorPanel">
+        <div class="editor-toolbar">
+          <div class="editor-file-info">
+            <i class="fas fa-file-code"></i>
+            <span id="currentFileName">untitled.js</span>
+            <span class="file-status" id="fileStatus">Unsaved</span>
+          </div>
+          <div class="editor-actions">
+            <button class="action-btn" id="newFileBtn" title="New File">
+              <i class="fas fa-plus"></i>
+            </button>
+            <button class="action-btn" id="saveFileBtn" title="Save">
+              <i class="fas fa-save"></i>
+            </button>
+            <button class="action-btn" id="runCodeBtn" title="Run">
+              <i class="fas fa-play"></i>
+            </button>
+            <button class="action-btn accent" id="askAiBtn" title="Ask Kimi AI">
+              <i class="fas fa-brain"></i> Ask AI
+            </button>
+          </div>
+        </div>
+        <div class="editor-container" id="editorContainer">
+          <textarea id="codeEditor" spellcheck="false" placeholder="// Start coding here...
+// Press Ctrl+Space to ask Kimi AI
+
+function hello() {
+  console.log('Hello from Kimi K2.6 UDE!');
+}
+
+hello();"></textarea>
+          <div class="line-numbers" id="lineNumbers">1</div>
+        </div>
+        <div class="editor-statusbar">
+          <span id="cursorPos">Ln 1, Col 1</span>
+          <span id="fileType">JavaScript</span>
+          <span>UTF-8</span>
+          <span>Kimi K2.6</span>
+        </div>
+      </div>
+
+      <!-- AI Chat Panel -->
+      <div class="panel" id="aiPanel">
+        <div class="ai-header">
+          <div class="ai-model-info">
+            <i class="fas fa-brain"></i>
+            <span>Kimi K2.6</span>
+            <span class="ai-badge">AI</span>
+          </div>
+          <button class="action-btn" id="clearChatBtn" title="Clear Chat">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        <div class="ai-messages" id="aiMessages">
+          <div class="ai-welcome">
+            <div class="ai-welcome-icon">
+              <i class="fas fa-brain"></i>
+            </div>
+            <h2>Kimi K2.6 AI Assistant</h2>
+            <p>I can help you with code, debugging, explanations, and more. What would you like to work on?</p>
+            <div class="ai-suggestions">
+              <button class="suggestion-chip" data-prompt="Write a Python web scraper with error handling">Web Scraper</button>
+              <button class="suggestion-chip" data-prompt="Create a REST API with Express.js and JWT auth">REST API</button>
+              <button class="suggestion-chip" data-prompt="Build a React component for a dashboard">Dashboard UI</button>
+              <button class="suggestion-chip" data-prompt="Explain how async/await works in JavaScript">Explain Code</button>
+            </div>
+          </div>
+        </div>
+        <div class="ai-input-area">
+          <div class="ai-input-wrapper">
+            <textarea id="aiInput" rows="1" placeholder="Ask Kimi K2.6 anything..."></textarea>
+            <button class="send-btn" id="sendAiBtn" title="Send">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+          <div class="ai-input-hint">
+            Powered by Kimi K2.6 via NVIDIA NIM
+          </div>
+        </div>
+      </div>
+
+      <!-- Terminal Panel -->
+      <div class="panel" id="terminalPanel">
+        <div class="terminal-toolbar">
+          <span><i class="fas fa-terminal"></i> Kimi Terminal</span>
+          <button class="action-btn" id="clearTermBtn" title="Clear">
+            <i class="fas fa-eraser"></i>
+          </button>
+        </div>
+        <div class="terminal-body" id="terminalBody">
+          <div class="terminal-output" id="terminalOutput">
+            <div class="term-line term-info">Kimi K2.6 UDE Terminal v1.0</div>
+            <div class="term-line term-info">Powered by Kimi AI - Type 'help' for commands</div>
+            <div class="term-line">&nbsp;</div>
+          </div>
+          <div class="terminal-input-line">
+            <span class="term-prompt">$</span>
+            <input type="text" id="terminalInput" autocomplete="off" spellcheck="false" placeholder="Type a command...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Files Panel -->
+      <div class="panel" id="filesPanel">
+        <div class="files-toolbar">
+          <span><i class="fas fa-folder-open"></i> Project Files</span>
+          <div class="files-actions">
+            <button class="action-btn" id="addFileBtn" title="New File">
+              <i class="fas fa-file-plus"></i> +
+            </button>
+            <button class="action-btn" id="importFileBtn" title="Import">
+              <i class="fas fa-upload"></i>
+            </button>
+          </div>
+        </div>
+        <div class="files-list" id="filesList">
+          <div class="file-item active" data-filename="untitled.js">
+            <i class="fas fa-file-code file-icon"></i>
+            <span class="file-name">untitled.js</span>
+            <span class="file-size">0 B</span>
+            <button class="file-delete" title="Delete"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+        <div class="files-info">
+          <span id="filesCount">1 file</span>
+          <span id="filesTotalSize">0 B total</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay hidden" id="settingsModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3><i class="fas fa-cog"></i> Settings</h3>
+          <button class="modal-close" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="setting-group">
+            <label>API Endpoint</label>
+            <input type="text" id="apiEndpoint" value="https://integrate.api.nvidia.com/v1/chat/completions">
+          </div>
+          <div class="setting-group">
+            <label>API Key</label>
+            <input type="password" id="apiKey" placeholder="nvapi-...">
+          </div>
+          <div class="setting-group">
+            <label>Model</label>
+            <select id="modelSelect">
+              <option value="moonshotai/kimi-k2.6" selected>Kimi K2.6</option>
+              <option value="moonshotai/kimi-k2.6:free">Kimi K2.6 (Free)</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label>Theme</label>
+            <select id="themeSelect">
+              <option value="dark" selected>Dark (Theia)</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label>Font Size</label>
+            <input type="range" id="fontSize" min="10" max="24" value="14">
+            <span id="fontSizeLabel">14px</span>
+          </div>
+          <div class="setting-group">
+            <label>Tab Size</label>
+            <select id="tabSize">
+              <option value="2">2 spaces</option>
+              <option value="4" selected>4 spaces</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New File Modal -->
+  <div class="modal-overlay hidden" id="newFileModal">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-plus"></i> New File</h3>
+        <button class="modal-close" id="closeNewFileBtn"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label>File Name</label>
+          <input type="text" id="newFileName" placeholder="myfile.js">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="createFileBtn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

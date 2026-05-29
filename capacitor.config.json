@@ -1,0 +1,23 @@
+{
+  "appId": "com.kimi.theia.ude",
+  "appName": "Kimi K2.6 UDE",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#0F1117",
+      "showSpinner": false,
+      "spinnerColor": "#10B981",
+      "fadeOutDuration": 300
+    }
+  }
+}

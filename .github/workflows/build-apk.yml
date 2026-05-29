@@ -1,0 +1,170 @@
+name: Build Kimi K2.6 UDE APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Set up Java 17
+      uses: actions/setup-java@v4
+      id: setup-java
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install Capacitor dependencies
+      run: |
+        npm install
+
+    - name: Add Android platform
+      run: |
+        npx cap add android
+        npx cap copy android
+        npx cap sync android
+
+    - name: Verify Android project structure
+      run: |
+        echo "=== Checking Android project ==="
+        ls -la android/
+        ls -la android/app/
+        ls -la android/app/src/main/
+        echo "=== Checking assets ==="
+        ls -la android/app/src/main/assets/public/ 2>/dev/null || echo "Assets dir not found"
+        echo "=== Checking manifest ==="
+        cat android/app/src/main/AndroidManifest.xml 2>/dev/null || echo "Manifest not found"
+        echo "=== Checking build.gradle ==="
+        cat android/app/build.gradle 2>/dev/null || echo "build.gradle not found"
+
+    - name: Patch Android project for ARM + large assets
+      run: |
+        # Patch build.gradle to support all ABIs and handle large assets
+        cat > android/app/build.gradle << 'GRADLEEOF'
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace "com.kimi.theia.ude"
+            compileSdk 34
+
+            defaultConfig {
+                applicationId "com.kimi.theia.ude"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0.0"
+                ndk {
+                    abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'
+                }
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                }
+                debug {
+                    minifyEnabled false
+                    debuggable true
+                }
+            }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+
+            packagingOptions {
+                jniLibs {
+                    useLegacyPackaging = false
+                }
+            }
+
+            aaptOptions {
+                noCompress 'js', 'css', 'html', 'map', 'json', 'wasm'
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.webkit:webkit:1.11.0'
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'androidx.activity:activity-ktx:1.8.2'
+        }
+        GRADLEEOF
+
+        # Patch AndroidManifest.xml
+        MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+        if [ -f "$MANIFEST_PATH" ]; then
+          sed -i 's/android:extractNativeLibs="[^"]*"//g' "$MANIFEST_PATH"
+          sed -i 's/android:usesCleartextTraffic="[^"]*"/android:usesCleartextTraffic="true"/g' "$MANIFEST_PATH"
+          echo "Patched manifest:"
+          cat "$MANIFEST_PATH"
+        fi
+
+    - name: Build Android APK (Debug)
+      run: |
+        cd android
+        ./gradlew assembleDebug --stacktrace
+      env:
+        JAVA_HOME: ${{ steps.setup-java.outputs.path }}
+
+    - name: Verify APK
+      run: |
+        APK_FILE=$(find android -name "app-debug.apk" -type f | head -1)
+        if [ -z "$APK_FILE" ]; then
+          echo "❌ No APK found!"
+          exit 1
+        fi
+        echo "APK: $APK_FILE"
+        echo "APK Size: $(du -h "$APK_FILE" | cut -f1)"
+        echo ""
+        echo "=== Native Libraries ==="
+        unzip -l "$APK_FILE" | grep "lib/" || echo "No native libs"
+        echo ""
+        echo "=== Assets ==="
+        unzip -l "$APK_FILE" | grep "assets/" | head -20
+        echo ""
+        echo "=== Signature Files ==="
+        unzip -l "$APK_FILE" | grep -E "META-INF/.*\.(RSA|SF|MF)" || echo "No signature found"
+
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: kimi-ude-debug-apk
+        path: android/app/build/outputs/apk/debug/*.apk
+        retention-days: 30
+
+    - name: Build Summary
+      if: always()
+      run: |
+        APK_FILE=$(find android -name "app-debug.apk" -type f 2>/dev/null | head -1)
+        if [ -n "$APK_FILE" ]; then
+          APK_SIZE=$(du -h "$APK_FILE" | cut -f1)
+          echo "### ✅ APK Built Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "📱 Size: $APK_SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "🏗️ Built with: Capacitor 6 + Android SDK 34" >> $GITHUB_STEP_SUMMARY
+          echo "🧠 Features: Kimi K2.6 AI + Code Editor + Terminal" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Download from Artifacts section below" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ❌ APK Build Failed" >> $GITHUB_STEP_SUMMARY
+        fi
