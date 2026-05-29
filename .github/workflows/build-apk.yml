@@ -33,8 +33,7 @@ jobs:
       uses: android-actions/setup-android@v3
 
     - name: Install Capacitor dependencies
-      run: |
-        npm install
+      run: npm install
 
     - name: Add Android platform
       run: |
@@ -42,84 +41,28 @@ jobs:
         npx cap copy android
         npx cap sync android
 
-    - name: Verify Android project structure
+    - name: Patch Android project
       run: |
-        echo "=== Checking Android project ==="
-        ls -la android/
-        ls -la android/app/
-        ls -la android/app/src/main/
-        echo "=== Checking assets ==="
-        ls -la android/app/src/main/assets/public/ 2>/dev/null || echo "Assets dir not found"
-        echo "=== Checking manifest ==="
-        cat android/app/src/main/AndroidManifest.xml 2>/dev/null || echo "Manifest not found"
-        echo "=== Checking build.gradle ==="
-        cat android/app/build.gradle 2>/dev/null || echo "build.gradle not found"
+        BUILD_GRADLE="android/app/build.gradle"
 
-    - name: Patch Android project for ARM + large assets
-      run: |
-        # Patch build.gradle to support all ABIs and handle large assets
-        cat > android/app/build.gradle << 'GRADLEEOF'
-        plugins {
-            id 'com.android.application'
-        }
+        # Add NDK abiFilters to defaultConfig
+        sed -i '/defaultConfig {/a\        ndk { abiFilters "arm64-v8a", "armeabi-v7a", "x86_64", "x86" }' "$BUILD_GRADLE"
 
-        android {
-            namespace "com.kimi.theia.ude"
-            compileSdk 34
+        # Add aaptOptions before the closing brace of android {}
+        sed -i '/^android {/a\    aaptOptions { noCompress "js", "css", "html", "map", "json", "wasm" }' "$BUILD_GRADLE"
 
-            defaultConfig {
-                applicationId "com.kimi.theia.ude"
-                minSdk 24
-                targetSdk 34
-                versionCode 1
-                versionName "1.0.0"
-                ndk {
-                    abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'
-                }
-            }
+        # Add usesCleartextTraffic to manifest
+        MANIFEST="android/app/src/main/AndroidManifest.xml"
+        sed -i 's|android:usesCleartextTraffic="false"|android:usesCleartextTraffic="true"|g' "$MANIFEST"
 
-            buildTypes {
-                release {
-                    minifyEnabled false
-                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                }
-                debug {
-                    minifyEnabled false
-                    debuggable true
-                }
-            }
+        # Remove extractNativeLibs if present
+        sed -i '/android:extractNativeLibs/d' "$MANIFEST"
 
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
-            }
-
-            packagingOptions {
-                jniLibs {
-                    useLegacyPackaging = false
-                }
-            }
-
-            aaptOptions {
-                noCompress 'js', 'css', 'html', 'map', 'json', 'wasm'
-            }
-        }
-
-        dependencies {
-            implementation 'androidx.webkit:webkit:1.11.0'
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-            implementation 'androidx.activity:activity-ktx:1.8.2'
-        }
-        GRADLEEOF
-
-        # Patch AndroidManifest.xml
-        MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-        if [ -f "$MANIFEST_PATH" ]; then
-          sed -i 's/android:extractNativeLibs="[^"]*"//g' "$MANIFEST_PATH"
-          sed -i 's/android:usesCleartextTraffic="[^"]*"/android:usesCleartextTraffic="true"/g' "$MANIFEST_PATH"
-          echo "Patched manifest:"
-          cat "$MANIFEST_PATH"
-        fi
+        echo "=== Patched build.gradle ==="
+        cat "$BUILD_GRADLE"
+        echo ""
+        echo "=== Patched manifest ==="
+        cat "$MANIFEST"
 
     - name: Build Android APK (Debug)
       run: |
@@ -141,11 +84,14 @@ jobs:
         echo "=== Native Libraries ==="
         unzip -l "$APK_FILE" | grep "lib/" || echo "No native libs"
         echo ""
-        echo "=== Assets ==="
-        unzip -l "$APK_FILE" | grep "assets/" | head -20
+        echo "=== Assets (first 15) ==="
+        unzip -l "$APK_FILE" | grep "assets/" | head -15
         echo ""
         echo "=== Signature Files ==="
         unzip -l "$APK_FILE" | grep -E "META-INF/.*\.(RSA|SF|MF)" || echo "No signature found"
+        echo ""
+        echo "=== Total files ==="
+        unzip -l "$APK_FILE" | tail -1
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
@@ -167,4 +113,5 @@ jobs:
           echo "📦 Download from Artifacts section below" >> $GITHUB_STEP_SUMMARY
         else
           echo "### ❌ APK Build Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Check the build logs for errors" >> $GITHUB_STEP_SUMMARY
         fi
